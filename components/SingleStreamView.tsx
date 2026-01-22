@@ -9,6 +9,7 @@
 import { StreamData } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { X, Grid3x3 } from 'lucide-react';
+import { useEffect, useRef } from 'react';
 
 interface SingleStreamViewProps {
   stream: StreamData;
@@ -17,22 +18,44 @@ interface SingleStreamViewProps {
 }
 
 /**
- * Render Twitch player embed
+ * Render Twitch player embed using interactive API
  */
-function TwitchPlayer({ channelId }: { channelId: string }) {
-  const hostname = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
-  
-  return (
-    <iframe
-      src={`https://player.twitch.tv/?channel=${channelId}&parent=${hostname}&autoplay=false`}
-      height="100%"
-      width="100%"
-      allowFullScreen
-      allow="autoplay"
-      className="rounded-lg"
-      title={`Twitch Stream - ${channelId}`}
-    />
-  );
+function TwitchPlayer({ channelId, playerId }: { channelId: string; playerId: string }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // Load Twitch embed script
+    const script = document.createElement('script');
+    script.src = 'https://player.twitch.tv/js/embed/v1.js';
+    script.async = true;
+    document.body.appendChild(script);
+
+    script.onload = () => {
+      // Create player when script is loaded
+      if (window.Twitch && window.Twitch.Player && containerRef.current) {
+        try {
+          new window.Twitch.Player(playerId, {
+            width: '100%',
+            height: '100%',
+            channel: channelId,
+            parent: [typeof window !== 'undefined' ? window.location.hostname : 'localhost'],
+            autoplay: false,
+          });
+        } catch (error) {
+          console.error('Error creating Twitch player:', error);
+        }
+      }
+    };
+
+    return () => {
+      // Cleanup
+      if (document.body.contains(script)) {
+        document.body.removeChild(script);
+      }
+    };
+  }, [channelId, playerId]);
+
+  return <div ref={containerRef} id={playerId} style={{ width: '100%', height: '100%' }} />;
 }
 
 /**
@@ -103,7 +126,7 @@ export function SingleStreamView({
         {/* Video player */}
         <div className="w-full aspect-video bg-black rounded-lg overflow-hidden shadow-2xl">
           {stream.platform === 'twitch' ? (
-            <TwitchPlayer channelId={stream.channelId} />
+            <TwitchPlayer channelId={stream.channelId} playerId={`twitch-player-single-${stream.id}`} />
           ) : (
             <YouTubePlayer channelId={stream.channelId} />
           )}
@@ -116,4 +139,13 @@ export function SingleStreamView({
       </div>
     </div>
   );
+}
+
+// Extend Window interface for Twitch
+declare global {
+  interface Window {
+    Twitch: {
+      Player: new (elementId: string, options: any) => any;
+    };
+  }
 }

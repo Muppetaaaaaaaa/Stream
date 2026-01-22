@@ -10,6 +10,7 @@ import { StreamData } from '@/lib/types';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { X, Maximize2 } from 'lucide-react';
+import { useEffect, useRef } from 'react';
 
 interface MultiStreamGridProps {
   streams: StreamData[];
@@ -20,23 +21,45 @@ interface MultiStreamGridProps {
 }
 
 /**
- * Render Twitch player embed
- * Uses the official Twitch embed player
+ * Render Twitch player embed using interactive API
+ * More reliable than iframe embed
  */
-function TwitchPlayer({ channelId }: { channelId: string }) {
-  const hostname = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
-  
-  return (
-    <iframe
-      src={`https://player.twitch.tv/?channel=${channelId}&parent=${hostname}&autoplay=false`}
-      height="100%"
-      width="100%"
-      allowFullScreen
-      allow="autoplay"
-      className="rounded-lg"
-      title={`Twitch Stream - ${channelId}`}
-    />
-  );
+function TwitchPlayer({ channelId, playerId }: { channelId: string; playerId: string }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // Load Twitch embed script
+    const script = document.createElement('script');
+    script.src = 'https://player.twitch.tv/js/embed/v1.js';
+    script.async = true;
+    document.body.appendChild(script);
+
+    script.onload = () => {
+      // Create player when script is loaded
+      if (window.Twitch && window.Twitch.Player && containerRef.current) {
+        try {
+          new window.Twitch.Player(playerId, {
+            width: '100%',
+            height: '100%',
+            channel: channelId,
+            parent: [typeof window !== 'undefined' ? window.location.hostname : 'localhost'],
+            autoplay: false,
+          });
+        } catch (error) {
+          console.error('Error creating Twitch player:', error);
+        }
+      }
+    };
+
+    return () => {
+      // Cleanup
+      if (document.body.contains(script)) {
+        document.body.removeChild(script);
+      }
+    };
+  }, [channelId, playerId]);
+
+  return <div ref={containerRef} id={playerId} style={{ width: '100%', height: '100%' }} />;
 }
 
 /**
@@ -156,16 +179,16 @@ export function MultiStreamGrid({
               {/* Player */}
               <div className="w-full h-full">
                 {stream.platform === 'twitch' ? (
-                  <TwitchPlayer channelId={stream.channelId} />
+                  <TwitchPlayer channelId={stream.channelId} playerId={`twitch-player-${stream.id}`} />
                 ) : (
                   <YouTubePlayer channelId={stream.channelId} />
                 )}
               </div>
 
               {/* Overlay controls - appear on hover */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex flex-col justify-between p-3 rounded-lg">
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex flex-col justify-between p-3 rounded-lg pointer-events-none">
                 {/* Top: Platform badge and channel name */}
-                <div className="flex items-start justify-between">
+                <div className="flex items-start justify-between pointer-events-auto">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-semibold px-2 py-1 rounded bg-red-600 text-white">
                       {stream.platform === 'twitch' ? '🟣 TWITCH' : '🔴 YOUTUBE'}
@@ -183,7 +206,7 @@ export function MultiStreamGrid({
                 </div>
 
                 {/* Bottom: Channel name and expand button */}
-                <div className="flex items-end justify-between">
+                <div className="flex items-end justify-between pointer-events-auto">
                   <div className="flex-1">
                     <p className="text-sm font-semibold text-white truncate">
                       {stream.channelName}
@@ -217,4 +240,13 @@ export function MultiStreamGrid({
       </div>
     </div>
   );
+}
+
+// Extend Window interface for Twitch
+declare global {
+  interface Window {
+    Twitch: {
+      Player: new (elementId: string, options: any) => any;
+    };
+  }
 }
