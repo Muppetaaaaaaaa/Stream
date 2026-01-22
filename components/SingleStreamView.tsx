@@ -9,7 +9,7 @@
 import { StreamData } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { X, Grid3x3 } from 'lucide-react';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 interface SingleStreamViewProps {
   stream: StreamData;
@@ -30,31 +30,72 @@ interface TwitchPlayerOptions {
  */
 function TwitchPlayer({ channelId, playerId }: { channelId: string; playerId: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    setIsLoading(true);
+    setError(null);
+
+    // Check if Twitch script is already loaded
+    if (window.Twitch && window.Twitch.Player) {
+      try {
+        const options: TwitchPlayerOptions = {
+          width: '100%',
+          height: '100%',
+          channel: channelId,
+          parent: [typeof window !== 'undefined' ? window.location.hostname : 'localhost'],
+          autoplay: false,
+        };
+        new window.Twitch.Player(playerId, options);
+        setIsLoading(false);
+      } catch (err) {
+        console.error('Error creating Twitch player:', err);
+        setError('Failed to load player');
+        setIsLoading(false);
+      }
+      return;
+    }
+
     // Load Twitch embed script
     const script = document.createElement('script');
     script.src = 'https://player.twitch.tv/js/embed/v1.js';
     script.async = true;
-    document.body.appendChild(script);
+    script.crossOrigin = 'anonymous';
 
     script.onload = () => {
-      // Create player when script is loaded
-      if (window.Twitch && window.Twitch.Player && containerRef.current) {
-        try {
-          const options: TwitchPlayerOptions = {
-            width: '100%',
-            height: '100%',
-            channel: channelId,
-            parent: [typeof window !== 'undefined' ? window.location.hostname : 'localhost'],
-            autoplay: false,
-          };
-          new window.Twitch.Player(playerId, options);
-        } catch (error) {
-          console.error('Error creating Twitch player:', error);
+      // Wait a moment for Twitch to be available
+      setTimeout(() => {
+        if (window.Twitch && window.Twitch.Player && containerRef.current) {
+          try {
+            const options: TwitchPlayerOptions = {
+              width: '100%',
+              height: '100%',
+              channel: channelId,
+              parent: [typeof window !== 'undefined' ? window.location.hostname : 'localhost'],
+              autoplay: false,
+            };
+            new window.Twitch.Player(playerId, options);
+            setIsLoading(false);
+          } catch (err) {
+            console.error('Error creating Twitch player:', err);
+            setError('Failed to load player');
+            setIsLoading(false);
+          }
+        } else {
+          setError('Twitch player not available');
+          setIsLoading(false);
         }
-      }
+      }, 100);
     };
+
+    script.onerror = () => {
+      console.error('Failed to load Twitch embed script');
+      setError('Failed to load Twitch script');
+      setIsLoading(false);
+    };
+
+    document.body.appendChild(script);
 
     return () => {
       // Cleanup
@@ -64,7 +105,27 @@ function TwitchPlayer({ channelId, playerId }: { channelId: string; playerId: st
     };
   }, [channelId, playerId]);
 
-  return <div ref={containerRef} id={playerId} style={{ width: '100%', height: '100%' }} />;
+  if (error) {
+    return (
+      <div className="w-full h-full flex items-center justify-center bg-slate-800">
+        <div className="text-center">
+          <p className="text-red-400 text-sm">{error}</p>
+          <p className="text-slate-400 text-xs mt-2">Try refreshing the page</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div ref={containerRef} id={playerId} style={{ width: '100%', height: '100%' }} />
+      {isLoading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-slate-800/50">
+          <div className="text-slate-300 text-sm">Loading player...</div>
+        </div>
+      )}
+    </>
+  );
 }
 
 /**
@@ -133,7 +194,7 @@ export function SingleStreamView({
         </div>
 
         {/* Video player */}
-        <div className="w-full aspect-video bg-black rounded-lg overflow-hidden shadow-2xl">
+        <div className="w-full aspect-video bg-black rounded-lg overflow-hidden shadow-2xl relative">
           {stream.platform === 'twitch' ? (
             <TwitchPlayer channelId={stream.channelId} playerId={`twitch-player-single-${stream.id}`} />
           ) : (
