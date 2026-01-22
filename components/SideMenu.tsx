@@ -191,18 +191,20 @@ export function SideMenu({
 
   return (
     <>
-      {/* Toggle button - redesigned and positioned to not block menu */}
+      {/* Toggle button - redesigned, positioned to not block menu, lower z-index when menu is open */}
       <button
         onClick={() => onOpenChange(!isOpen)}
-        className="fixed z-50 p-2.5 text-slate-300 hover:text-white transition-colors duration-200"
+        className={`fixed p-2 text-slate-300 hover:text-white transition-all duration-200 ${
+          isOpen ? 'z-30' : 'z-50'
+        }`}
         style={{
-          right: isOpen && isDocked ? panel.width + 8 : 16,
+          right: isOpen && isDocked ? panel.width + 12 : 16,
           top: 16,
         }}
         title={isOpen ? 'Close controls' : 'Open controls'}
       >
-        <div className="flex items-center justify-center w-10 h-10 rounded-lg hover:bg-slate-800/50 transition-colors">
-          {isOpen ? <X className="w-5 h-5" /> : <Settings className="w-5 h-5" />}
+        <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-slate-800/40 hover:bg-slate-700/60 transition-colors border border-slate-700/40">
+          {isOpen ? <X className="w-4 h-4" /> : <Settings className="w-4 h-4" />}
         </div>
       </button>
 

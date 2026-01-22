@@ -14,7 +14,7 @@ import { useMemo, useState } from 'react'
 import { StreamData } from '@/lib/types'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Plus, Volume2, VolumeX } from 'lucide-react'
+import { Volume2, VolumeX } from 'lucide-react'
 import { EmbedNotice } from '@/components/EmbedNotice'
 
 interface MultiStreamGridProps {
@@ -175,17 +175,6 @@ export function MultiStreamGrid({
               ))}
             </div>
           )}
-
-          {onAddStream && (
-            <Button
-              onClick={onAddStream}
-              size="sm"
-              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Add
-            </Button>
-          )}
         </div>
       </div>
 
@@ -194,7 +183,7 @@ export function MultiStreamGrid({
         {streams.map((stream) => (
           <Card
             key={stream.id}
-            className="bg-slate-900/40 border-slate-700/50 overflow-hidden transition-all duration-300 rounded-xl"
+            className="bg-slate-900/40 border-slate-700/50 overflow-hidden rounded-xl"
           >
             <div className="relative w-full aspect-video bg-black rounded-xl overflow-hidden">
               <div className="w-full h-full">
