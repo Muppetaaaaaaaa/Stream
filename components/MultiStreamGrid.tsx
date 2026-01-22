@@ -15,7 +15,6 @@ import { StreamData } from '@/lib/types'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Volume2, VolumeX } from 'lucide-react'
-import { EmbedNotice } from '@/components/EmbedNotice'
 
 interface MultiStreamGridProps {
   streams: StreamData[]
@@ -81,8 +80,6 @@ export function MultiStreamGrid({
   layoutAuto,
   onToggleLayoutAuto,
 }: MultiStreamGridProps) {
-  const [showNotice, setShowNotice] = useState(true)
-
   const gridClasses: Record<number, string> = {
     1: 'grid-cols-1',
     2: 'grid-cols-1 lg:grid-cols-2',
@@ -93,26 +90,8 @@ export function MultiStreamGrid({
 
   const gridClass = gridClasses[columns] || gridClasses[2]
 
-  const firstStreamUrl = useMemo(() => {
-    const s = streams[0]
-    if (!s) return ''
-    if (s.platform === 'twitch') return `https://www.twitch.tv/${s.channelId}`
-    return `https://www.youtube.com/${s.channelId.startsWith('@') ? s.channelId : '@' + s.channelId}`
-  }, [streams])
-
   return (
     <div className="p-4 md:p-6">
-      {/* Compatibility notice */}
-      {showNotice && streams.length > 0 && (
-        <div className="max-w-7xl mx-auto mb-4">
-          <EmbedNotice
-            platform={streams[0].platform === 'twitch' ? 'twitch' : 'youtube'}
-            url={firstStreamUrl}
-            onDismiss={() => setShowNotice(false)}
-          />
-        </div>
-      )}
-
       {/* Compact top row */}
       <div className="max-w-7xl mx-auto mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>

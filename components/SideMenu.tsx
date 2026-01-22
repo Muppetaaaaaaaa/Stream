@@ -31,6 +31,8 @@ import {
   LayoutGrid,
   Wand2,
   Settings,
+  MessageSquare,
+  Zap,
 } from 'lucide-react'
 
 interface SideMenuProps {
@@ -85,6 +87,15 @@ export function SideMenu({
   const [newStreamInput, setNewStreamInput] = useState('')
   const [presetName, setPresetName] = useState('')
   const [detectedPlatform, setDetectedPlatform] = useState<'twitch' | 'youtube' | null>(null)
+  const [showSettings, setShowSettings] = useState(false)
+  
+  // Settings state
+  const [settings, setSettings] = useState({
+    hideChat: false,
+    autoplayAudio: true,
+    streamQuality: 'auto' as 'auto' | '720p' | '480p' | '360p',
+    showNotifications: true,
+  })
 
   // dragging for floating mode
   const [isDragging, setIsDragging] = useState(false)
@@ -196,6 +207,15 @@ export function SideMenu({
     setPresetName('')
   }
 
+  const handleDeletePreset = (name: string) => {
+    // This would need to be implemented in the parent component
+    // For now, we'll just show a confirmation
+    if (confirm(`Delete preset "${name}"?`)) {
+      // Call parent delete function when available
+      console.log('Delete preset:', name)
+    }
+  }
+
   const toggleDockSide = () => {
     if (panel.mode === 'docked-left') onPanelModeChange('docked-right')
     else onPanelModeChange('docked-left')
@@ -259,6 +279,17 @@ export function SideMenu({
               </p>
             </div>
 
+            {/* Settings toggle */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-slate-300 hover:bg-slate-700/50"
+              onClick={() => setShowSettings(!showSettings)}
+              title="Settings"
+            >
+              <Zap className="w-4 h-4" />
+            </Button>
+
             {/* Dock left/right */}
             <Button
               variant="ghost"
@@ -292,6 +323,67 @@ export function SideMenu({
 
           {/* Content */}
           <div className="flex-1 overflow-y-auto p-4 space-y-5">
+            {/* Settings Panel */}
+            {showSettings && (
+              <Card className="bg-slate-800/60 border-slate-700/60 p-3 space-y-3">
+                <p className="text-xs font-semibold tracking-wide text-slate-300">SETTINGS</p>
+                
+                {/* Hide Chat */}
+                <div className="flex items-center justify-between">
+                  <label className="text-xs text-slate-300 flex items-center gap-2">
+                    <MessageSquare className="w-3 h-3" />
+                    Hide Chat
+                  </label>
+                  <input
+                    type="checkbox"
+                    checked={settings.hideChat}
+                    onChange={(e) => setSettings({ ...settings, hideChat: e.target.checked })}
+                    className="w-4 h-4 rounded"
+                  />
+                </div>
+
+                {/* Autoplay Audio */}
+                <div className="flex items-center justify-between">
+                  <label className="text-xs text-slate-300 flex items-center gap-2">
+                    <Volume2 className="w-3 h-3" />
+                    Autoplay Audio
+                  </label>
+                  <input
+                    type="checkbox"
+                    checked={settings.autoplayAudio}
+                    onChange={(e) => setSettings({ ...settings, autoplayAudio: e.target.checked })}
+                    className="w-4 h-4 rounded"
+                  />
+                </div>
+
+                {/* Stream Quality */}
+                <div className="space-y-1">
+                  <label className="text-xs text-slate-300">Stream Quality</label>
+                  <select
+                    value={settings.streamQuality}
+                    onChange={(e) => setSettings({ ...settings, streamQuality: e.target.value as any })}
+                    className="w-full bg-slate-900/50 border border-slate-700/60 rounded text-xs text-white p-1.5"
+                  >
+                    <option value="auto">Auto (Recommended)</option>
+                    <option value="720p">720p</option>
+                    <option value="480p">480p</option>
+                    <option value="360p">360p</option>
+                  </select>
+                </div>
+
+                {/* Notifications */}
+                <div className="flex items-center justify-between">
+                  <label className="text-xs text-slate-300">Notifications</label>
+                  <input
+                    type="checkbox"
+                    checked={settings.showNotifications}
+                    onChange={(e) => setSettings({ ...settings, showNotifications: e.target.checked })}
+                    className="w-4 h-4 rounded"
+                  />
+                </div>
+              </Card>
+            )}
+
             {/* Quick actions */}
             <div className="grid grid-cols-2 gap-2">
               <Button
@@ -402,17 +494,27 @@ export function SideMenu({
               {presets.length > 0 && (
                 <div className="space-y-2">
                   {presets.map((p) => (
-                    <Button
-                      key={p.name}
-                      onClick={() => onLoadPreset(p.name)}
-                      variant="outline"
-                      size="sm"
-                      className="w-full justify-start border-slate-700/60 bg-slate-900/40 hover:bg-slate-900/60 text-slate-200"
-                    >
-                      <Download className="w-4 h-4 mr-2" />
-                      {p.name}
-                      <span className="ml-auto text-xs text-slate-500">{p.streams.length}</span>
-                    </Button>
+                    <div key={p.name} className="flex gap-2 items-center">
+                      <Button
+                        onClick={() => onLoadPreset(p.name)}
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 justify-start border-slate-700/60 bg-slate-900/40 hover:bg-slate-900/60 text-slate-200"
+                      >
+                        <Download className="w-4 h-4 mr-2" />
+                        {p.name}
+                        <span className="ml-auto text-xs text-slate-500">{p.streams.length}</span>
+                      </Button>
+                      <Button
+                        onClick={() => handleDeletePreset(p.name)}
+                        variant="ghost"
+                        size="icon"
+                        className="text-red-400 hover:bg-red-950/30 h-8 w-8"
+                        title="Delete preset"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    </div>
                   ))}
                 </div>
               )}
@@ -456,14 +558,6 @@ export function SideMenu({
                 </div>
               </div>
             )}
-
-            <Card className="bg-slate-800/40 border-slate-700/60 p-3">
-              <p className="text-[11px] text-slate-400">
-                Having issues in Brave/Opera? Their privacy shields may block 3rd-party cookies for embeds.
-                If a player is blank, allow cookies for <span className="text-slate-200">twitch.tv</span> / <span className="text-slate-200">youtube.com</span>,
-                or open the stream in a new tab.
-              </p>
-            </Card>
           </div>
 
           {/* Footer / resize (docked only) */}
