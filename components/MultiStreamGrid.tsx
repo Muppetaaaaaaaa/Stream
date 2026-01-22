@@ -20,6 +20,14 @@ interface MultiStreamGridProps {
   onGridColumnsChange: (columns: number) => void;
 }
 
+interface TwitchPlayerOptions {
+  width: string;
+  height: string;
+  channel: string;
+  parent: string[];
+  autoplay: boolean;
+}
+
 /**
  * Render Twitch player embed using interactive API
  * More reliable than iframe embed
@@ -38,13 +46,14 @@ function TwitchPlayer({ channelId, playerId }: { channelId: string; playerId: st
       // Create player when script is loaded
       if (window.Twitch && window.Twitch.Player && containerRef.current) {
         try {
-          new window.Twitch.Player(playerId, {
+          const options: TwitchPlayerOptions = {
             width: '100%',
             height: '100%',
             channel: channelId,
             parent: [typeof window !== 'undefined' ? window.location.hostname : 'localhost'],
             autoplay: false,
-          });
+          };
+          new window.Twitch.Player(playerId, options);
         } catch (error) {
           console.error('Error creating Twitch player:', error);
         }
@@ -101,7 +110,7 @@ export function MultiStreamGrid({
   }
 
   // Determine grid class based on column count
-  const gridClasses = {
+  const gridClasses: Record<number, string> = {
     1: 'grid-cols-1',
     2: 'grid-cols-1 md:grid-cols-2',
     3: 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3',
@@ -109,7 +118,7 @@ export function MultiStreamGrid({
     5: 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5',
   };
 
-  const gridClass = gridClasses[gridColumns as keyof typeof gridClasses] || gridClasses[2];
+  const gridClass = gridClasses[gridColumns] || gridClasses[2];
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-black p-4 md:p-6">
@@ -246,7 +255,7 @@ export function MultiStreamGrid({
 declare global {
   interface Window {
     Twitch: {
-      Player: new (elementId: string, options: any) => any;
+      Player: new (elementId: string, options: TwitchPlayerOptions) => unknown;
     };
   }
 }

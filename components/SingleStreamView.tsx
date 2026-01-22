@@ -17,6 +17,14 @@ interface SingleStreamViewProps {
   onBackToGrid: () => void;
 }
 
+interface TwitchPlayerOptions {
+  width: string;
+  height: string;
+  channel: string;
+  parent: string[];
+  autoplay: boolean;
+}
+
 /**
  * Render Twitch player embed using interactive API
  */
@@ -34,13 +42,14 @@ function TwitchPlayer({ channelId, playerId }: { channelId: string; playerId: st
       // Create player when script is loaded
       if (window.Twitch && window.Twitch.Player && containerRef.current) {
         try {
-          new window.Twitch.Player(playerId, {
+          const options: TwitchPlayerOptions = {
             width: '100%',
             height: '100%',
             channel: channelId,
             parent: [typeof window !== 'undefined' ? window.location.hostname : 'localhost'],
             autoplay: false,
-          });
+          };
+          new window.Twitch.Player(playerId, options);
         } catch (error) {
           console.error('Error creating Twitch player:', error);
         }
@@ -145,7 +154,7 @@ export function SingleStreamView({
 declare global {
   interface Window {
     Twitch: {
-      Player: new (elementId: string, options: any) => any;
+      Player: new (elementId: string, options: TwitchPlayerOptions) => unknown;
     };
   }
 }
