@@ -10,7 +10,7 @@
 
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { StreamData } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Volume2, VolumeX, Maximize2, Minimize2 } from 'lucide-react'
@@ -81,7 +81,6 @@ export function MultiStreamGrid({
   columns,
   muteAll,
   onRemoveStream,
-  onAddStream,
   onToggleMuteAll,
   onSetColumns,
   layoutAuto,
@@ -239,7 +238,7 @@ export function MultiStreamGrid({
       {!freeFloatingMode && (
         <div className="max-w-7xl mx-auto mt-8 text-center">
           <p className="text-xs text-slate-500">
-            Use the player controls for fullscreen • Use the dockable panel for settings • Click "Float" to drag and resize streams freely
+            Use the player controls for fullscreen • Use the dockable panel for settings • Click &quot;Float&quot; to drag and resize streams freely
           </p>
         </div>
       )}

@@ -11,7 +11,7 @@ import { useRef, useState, useEffect } from 'react'
 import { StreamData } from '@/lib/types'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { X, Move, Maximize2, Minimize2 } from 'lucide-react'
+import { X, Move } from 'lucide-react'
 
 interface Position {
   x: number

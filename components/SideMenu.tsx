@@ -361,7 +361,7 @@ export function SideMenu({
                   <label className="text-xs text-slate-300">Stream Quality</label>
                   <select
                     value={settings.streamQuality}
-                    onChange={(e) => setSettings({ ...settings, streamQuality: e.target.value as any })}
+                    onChange={(e) => setSettings({ ...settings, streamQuality: e.target.value as 'auto' | '720p' | '480p' | '360p' })}
                     className="w-full bg-slate-900/50 border border-slate-700/60 rounded text-xs text-white p-1.5"
                   >
                     <option value="auto">Auto (Recommended)</option>
