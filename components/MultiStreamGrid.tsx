@@ -10,7 +10,6 @@ import { StreamData } from '@/lib/types';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { X, Maximize2 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
 
 interface MultiStreamGridProps {
   streams: StreamData[];
@@ -20,115 +19,23 @@ interface MultiStreamGridProps {
   onGridColumnsChange: (columns: number) => void;
 }
 
-interface TwitchPlayerOptions {
-  width: string;
-  height: string;
-  channel: string;
-  parent: string[];
-  autoplay: boolean;
-}
-
 /**
- * Render Twitch player embed using interactive API
- * More reliable than iframe embed
+ * Render Twitch player embed using iframe
+ * More reliable across all platforms and hosting environments
  */
-function TwitchPlayer({ channelId, playerId }: { channelId: string; playerId: string }) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    setIsLoading(true);
-    setError(null);
-
-    // Check if Twitch script is already loaded
-    if (window.Twitch && window.Twitch.Player) {
-      try {
-        const options: TwitchPlayerOptions = {
-          width: '100%',
-          height: '100%',
-          channel: channelId,
-          parent: [typeof window !== 'undefined' ? window.location.hostname : 'localhost'],
-          autoplay: false,
-        };
-        new window.Twitch.Player(playerId, options);
-        setIsLoading(false);
-      } catch (err) {
-        console.error('Error creating Twitch player:', err);
-        setError('Failed to load player');
-        setIsLoading(false);
-      }
-      return;
-    }
-
-    // Load Twitch embed script
-    const script = document.createElement('script');
-    script.src = 'https://player.twitch.tv/js/embed/v1.js';
-    script.async = true;
-    script.crossOrigin = 'anonymous';
-
-    script.onload = () => {
-      // Wait a moment for Twitch to be available
-      setTimeout(() => {
-        if (window.Twitch && window.Twitch.Player && containerRef.current) {
-          try {
-            const options: TwitchPlayerOptions = {
-              width: '100%',
-              height: '100%',
-              channel: channelId,
-              parent: [typeof window !== 'undefined' ? window.location.hostname : 'localhost'],
-              autoplay: false,
-            };
-            new window.Twitch.Player(playerId, options);
-            setIsLoading(false);
-          } catch (err) {
-            console.error('Error creating Twitch player:', err);
-            setError('Failed to load player');
-            setIsLoading(false);
-          }
-        } else {
-          setError('Twitch player not available');
-          setIsLoading(false);
-        }
-      }, 100);
-    };
-
-    script.onerror = () => {
-      console.error('Failed to load Twitch embed script');
-      setError('Failed to load Twitch script');
-      setIsLoading(false);
-    };
-
-    document.body.appendChild(script);
-
-    return () => {
-      // Cleanup
-      if (document.body.contains(script)) {
-        document.body.removeChild(script);
-      }
-    };
-  }, [channelId, playerId]);
-
-  if (error) {
-    return (
-      <div className="w-full h-full flex items-center justify-center bg-slate-800">
-        <div className="text-center">
-          <p className="text-red-400 text-sm">{error}</p>
-          <p className="text-slate-400 text-xs mt-2">Try refreshing the page</p>
-        </div>
-      </div>
-    );
-  }
-
+function TwitchPlayer({ channelId }: { channelId: string }) {
+  const hostname = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+  
   return (
-    <>
-      <div ref={containerRef} id={playerId} style={{ width: '100%', height: '100%' }} />
-      {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-slate-800/50">
-          <div className="text-slate-300 text-sm">Loading player...</div>
-        </div>
-      )}
-    </>
+    <iframe
+      src={`https://player.twitch.tv/?channel=${channelId}&parent=${hostname}&autoplay=false&muted=false`}
+      height="100%"
+      width="100%"
+      allowFullScreen
+      allow="autoplay"
+      className="rounded-lg"
+      title={`Twitch Stream - ${channelId}`}
+    />
   );
 }
 
@@ -247,9 +154,9 @@ export function MultiStreamGrid({
             {/* Stream container */}
             <div className="relative w-full aspect-video bg-black rounded-lg overflow-hidden">
               {/* Player */}
-              <div className="w-full h-full relative">
+              <div className="w-full h-full">
                 {stream.platform === 'twitch' ? (
-                  <TwitchPlayer channelId={stream.channelId} playerId={`twitch-player-${stream.id}`} />
+                  <TwitchPlayer channelId={stream.channelId} />
                 ) : (
                   <YouTubePlayer channelId={stream.channelId} />
                 )}
@@ -310,13 +217,4 @@ export function MultiStreamGrid({
       </div>
     </div>
   );
-}
-
-// Extend Window interface for Twitch
-declare global {
-  interface Window {
-    Twitch: {
-      Player: new (elementId: string, options: TwitchPlayerOptions) => unknown;
-    };
-  }
 }
