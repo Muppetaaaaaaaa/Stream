@@ -2,6 +2,10 @@
  * MultiStreamGrid Component
  * Displays multiple streams in an auto-adjusting responsive grid layout.
  * Uses iframes for maximum cross-browser compatibility.
+ *
+ * Note: We intentionally do NOT provide an "app-level fullscreen" mode.
+ * Twitch/YouTube already expose their own fullscreen controls inside the iframe,
+ * and trying to wrap/override them tends to break controls and permissions.
  */
 
 'use client'
@@ -10,7 +14,7 @@ import { useMemo, useState } from 'react'
 import { StreamData } from '@/lib/types'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { X, Maximize2, Plus, Volume2, VolumeX } from 'lucide-react'
+import { X, Plus, Volume2, VolumeX } from 'lucide-react'
 import { EmbedNotice } from '@/components/EmbedNotice'
 
 interface MultiStreamGridProps {
@@ -19,7 +23,6 @@ interface MultiStreamGridProps {
   columns: number
   muteAll: boolean
   onRemoveStream: (streamId: string) => void
-  onSelectStream: (streamId: string) => void
   onAddStream?: () => void
   onToggleMuteAll?: () => void
   onSetColumns?: (columns: number) => void
@@ -72,7 +75,6 @@ export function MultiStreamGrid({
   columns,
   muteAll,
   onRemoveStream,
-  onSelectStream,
   onAddStream,
   onToggleMuteAll,
   onSetColumns,
@@ -225,17 +227,8 @@ export function MultiStreamGrid({
                     <p className="text-sm font-semibold text-white truncate max-w-[220px]">
                       {stream.channelName}
                     </p>
-                    <p className="text-xs text-slate-300">Click to expand</p>
+                    <p className="text-xs text-slate-300">Use the player’s fullscreen button if needed</p>
                   </div>
-                  <Button
-                    onClick={() => onSelectStream(stream.id)}
-                    variant="ghost"
-                    size="sm"
-                    className="text-white hover:bg-white/10 rounded-full"
-                    title="Expand"
-                  >
-                    <Maximize2 className="w-4 h-4" />
-                  </Button>
                 </div>
               </div>
             </div>
@@ -245,7 +238,7 @@ export function MultiStreamGrid({
 
       <div className="max-w-7xl mx-auto mt-8 text-center">
         <p className="text-xs text-slate-500">
-          Hover over any stream for controls • Use the dockable panel for settings • Layout adapts to your screen
+          Hover over any stream for controls • Use the dockable panel for settings • Fullscreen is available inside each player
         </p>
       </div>
     </div>

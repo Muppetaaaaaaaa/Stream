@@ -6,6 +6,7 @@
  * - Add streams via floating + button (opens compact overlay)
  * - Dockable/floating control panel
  * - Auto layout that scales with stream count
+ * - No app-level fullscreen/expand (use player fullscreen controls)
  */
 
 'use client'
@@ -13,7 +14,6 @@
 import { useState } from 'react'
 import { StreamInput } from '@/components/StreamInput'
 import { MultiStreamGrid } from '@/components/MultiStreamGrid'
-import { SingleStreamView } from '@/components/SingleStreamView'
 import { SideMenu } from '@/components/SideMenu'
 import { KeyboardShortcutsHelp } from '@/components/KeyboardShortcutsHelp'
 import { useStreamTheater } from '@/hooks/useStreamTheater'
@@ -24,8 +24,6 @@ import { RotateCcw, Plus } from 'lucide-react'
 export default function Home() {
   const {
     streams,
-    viewMode,
-    selectedStreamId,
     effectiveColumns,
     layoutAuto,
     muteAll,
@@ -36,8 +34,6 @@ export default function Home() {
     addStream,
     removeStream,
     clearAllStreams,
-    selectStream,
-    switchToMultiView,
     setGridColumns,
     setLayoutAuto,
     setMuteAll,
@@ -62,56 +58,14 @@ export default function Home() {
     }, 200)
   }
 
-  // Keyboard shortcuts (keep minimal and non-conflicting)
   useKeyboardShortcuts({
     onClose: () => setShowAddOverlay(false),
   })
 
   if (!isHydrated) return null
 
-  const selectedStream = selectedStreamId ? streams.find((s) => s.id === selectedStreamId) : null
-
-  // Single view
-  if (viewMode === 'single' && selectedStream) {
-    return (
-      <>
-        <SingleStreamView
-          stream={selectedStream}
-          muteAll={muteAll}
-          onClose={switchToMultiView}
-          onBackToGrid={switchToMultiView}
-        />
-
-        <SideMenu
-          streams={streams}
-          presets={presets}
-          isOpen={panelOpen}
-          panel={panel}
-          layoutAuto={layoutAuto}
-          columns={effectiveColumns}
-          muteAll={muteAll}
-          onOpenChange={setPanelOpen}
-          onPanelModeChange={setPanelMode}
-          onPanelPositionChange={setPanelPosition}
-          onPanelWidthChange={setPanelWidth}
-          onAddStream={handleStreamSubmit}
-          onRemoveStream={removeStream}
-          onClearAll={clearAllStreams}
-          onToggleMuteAll={() => setMuteAll(!muteAll)}
-          onToggleLayoutAuto={() => setLayoutAuto(!layoutAuto)}
-          onSetColumns={(c) => setGridColumns(c)}
-          onSavePreset={savePreset}
-          onLoadPreset={loadPreset}
-        />
-
-        <KeyboardShortcutsHelp />
-      </>
-    )
-  }
-
   // Viewing mode
   if (streams.length > 0) {
-    // Apply padding when docked so content isn't hidden under the panel
     const leftPad = panelOpen && panel.mode === 'docked-left' ? panel.width : 0
     const rightPad = panelOpen && panel.mode === 'docked-right' ? panel.width : 0
 
@@ -150,7 +104,6 @@ export default function Home() {
             onToggleMuteAll={() => setMuteAll(!muteAll)}
             onSetColumns={(c) => setGridColumns(c)}
             onRemoveStream={removeStream}
-            onSelectStream={selectStream}
             onAddStream={() => setShowAddOverlay(true)}
           />
         </div>
