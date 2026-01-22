@@ -20,12 +20,15 @@ interface SingleStreamViewProps {
  * Render Twitch player embed
  */
 function TwitchPlayer({ channelId }: { channelId: string }) {
+  const hostname = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+  
   return (
     <iframe
-      src={`https://player.twitch.tv/?channel=${channelId}&parent=${typeof window !== 'undefined' ? window.location.hostname : 'localhost'}`}
+      src={`https://player.twitch.tv/?channel=${channelId}&parent=${hostname}&autoplay=false`}
       height="100%"
       width="100%"
       allowFullScreen
+      allow="autoplay"
       className="rounded-lg"
       title={`Twitch Stream - ${channelId}`}
     />
