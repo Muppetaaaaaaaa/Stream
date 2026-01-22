@@ -14,7 +14,7 @@ import { useMemo, useState } from 'react'
 import { StreamData } from '@/lib/types'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { X, Plus, Volume2, VolumeX } from 'lucide-react'
+import { Plus, Volume2, VolumeX } from 'lucide-react'
 import { EmbedNotice } from '@/components/EmbedNotice'
 
 interface MultiStreamGridProps {
@@ -194,7 +194,7 @@ export function MultiStreamGrid({
         {streams.map((stream) => (
           <Card
             key={stream.id}
-            className="bg-slate-900/40 border-slate-700/50 overflow-hidden group hover:border-slate-600/50 transition-all duration-300 rounded-xl"
+            className="bg-slate-900/40 border-slate-700/50 overflow-hidden transition-all duration-300 rounded-xl"
           >
             <div className="relative w-full aspect-video bg-black rounded-xl overflow-hidden">
               <div className="w-full h-full">
@@ -204,33 +204,6 @@ export function MultiStreamGrid({
                   <YouTubePlayer channelId={stream.channelId} muted={muteAll} />
                 )}
               </div>
-
-              {/* Hover overlay controls */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col justify-between p-4 rounded-xl pointer-events-none">
-                <div className="flex items-start justify-between pointer-events-auto">
-                  <span className="text-xs font-semibold px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-sm text-white border border-white/10">
-                    {stream.platform === 'twitch' ? '🟣 Twitch' : '🔴 YouTube'}
-                  </span>
-                  <Button
-                    onClick={() => onRemoveStream(stream.id)}
-                    variant="ghost"
-                    size="sm"
-                    className="text-white hover:bg-white/10 rounded-full"
-                    title="Remove stream"
-                  >
-                    <X className="w-4 h-4" />
-                  </Button>
-                </div>
-
-                <div className="flex items-end justify-between pointer-events-auto">
-                  <div>
-                    <p className="text-sm font-semibold text-white truncate max-w-[220px]">
-                      {stream.channelName}
-                    </p>
-                    <p className="text-xs text-slate-300">Use the player’s fullscreen button if needed</p>
-                  </div>
-                </div>
-              </div>
             </div>
           </Card>
         ))}
@@ -238,7 +211,7 @@ export function MultiStreamGrid({
 
       <div className="max-w-7xl mx-auto mt-8 text-center">
         <p className="text-xs text-slate-500">
-          Hover over any stream for controls • Use the dockable panel for settings • Fullscreen is available inside each player
+          Use the player controls for fullscreen • Use the dockable panel for settings
         </p>
       </div>
     </div>

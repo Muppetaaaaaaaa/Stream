@@ -19,7 +19,7 @@ import { KeyboardShortcutsHelp } from '@/components/KeyboardShortcutsHelp'
 import { useStreamTheater } from '@/hooks/useStreamTheater'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { Button } from '@/components/ui/button'
-import { RotateCcw, Plus } from 'lucide-react'
+import { RotateCcw } from 'lucide-react'
 
 export default function Home() {
   const {
@@ -75,18 +75,7 @@ export default function Home() {
           className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-black"
           style={{ paddingLeft: leftPad, paddingRight: rightPad }}
         >
-          {/* Floating add button */}
-          <div className="fixed left-4 top-4 z-30">
-            <Button
-              onClick={() => setShowAddOverlay(true)}
-              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-full p-3 shadow-lg hover:shadow-xl transition-all"
-              title="Add stream"
-            >
-              <Plus className="w-5 h-5" />
-            </Button>
-          </div>
-
-          {/* Add overlay */}
+          {/* Add overlay - triggered from SideMenu or keyboard shortcut */}
           {showAddOverlay && (
             <div className="fixed inset-0 z-40 flex items-start justify-center p-4 pt-20 bg-black/40 backdrop-blur-sm">
               <div className="w-full max-w-2xl bg-slate-900/80 border border-slate-700/60 rounded-2xl p-4 shadow-2xl">

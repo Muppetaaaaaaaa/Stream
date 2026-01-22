@@ -30,6 +30,7 @@ import {
   VolumeX,
   LayoutGrid,
   Wand2,
+  Settings,
 } from 'lucide-react'
 
 interface SideMenuProps {
@@ -190,13 +191,19 @@ export function SideMenu({
 
   return (
     <>
-      {/* Toggle button */}
+      {/* Toggle button - redesigned and positioned to not block menu */}
       <button
         onClick={() => onOpenChange(!isOpen)}
-        className="fixed right-4 top-4 z-50 p-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200"
-        title="Settings"
+        className="fixed z-50 p-2.5 text-slate-300 hover:text-white transition-colors duration-200"
+        style={{
+          right: isOpen && isDocked ? panel.width + 8 : 16,
+          top: 16,
+        }}
+        title={isOpen ? 'Close controls' : 'Open controls'}
       >
-        {isOpen ? <X className="w-5 h-5" /> : <LayoutGrid className="w-5 h-5" />}
+        <div className="flex items-center justify-center w-10 h-10 rounded-lg hover:bg-slate-800/50 transition-colors">
+          {isOpen ? <X className="w-5 h-5" /> : <Settings className="w-5 h-5" />}
+        </div>
       </button>
 
       {/* Panel */}
