@@ -1,313 +1,417 @@
 /**
- * SideMenu Component
- * Draggable side menu with stream management features
+ * SideMenu
+ *
+ * Requirements:
+ * - Dockable left/right
+ * - Can switch to floating and be dragged
+ * - Persisted via parent state (localStorage in useStreamTheater)
+ * - Fast stream management and global settings
  */
 
-'use client';
+'use client'
 
-import { useState, useRef, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card } from '@/components/ui/card';
+import { useEffect, useMemo, useRef, useState } from 'react'
+import type { PanelMode, PanelState, StreamData } from '@/lib/types'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Card } from '@/components/ui/card'
 import {
-  Menu,
-  X,
+  ArrowLeftToLine,
+  ArrowRightToLine,
+  Maximize2,
+  Minimize2,
+  Move,
   Plus,
-  Volume2,
-  VolumeX,
-  Settings,
   Save,
   Download,
   Trash2,
-  Grid3x3,
-  GripHorizontal,
-} from 'lucide-react';
-import { StreamData } from '@/lib/types';
+  X,
+  Volume2,
+  VolumeX,
+  LayoutGrid,
+  Wand2,
+} from 'lucide-react'
 
 interface SideMenuProps {
-  streams: StreamData[];
-  gridColumns: number;
-  onAddStream: (input: string) => void;
-  onRemoveStream: (streamId: string) => void;
-  onClearAll: () => void;
-  onGridColumnsChange: (columns: number) => void;
-  onSavePreset: (name: string) => void;
-  onLoadPreset: (name: string) => void;
-  savedPresets: { name: string; streams: StreamData[] }[];
-  isOpen: boolean;
-  onOpenChange: (open: boolean) => void;
+  streams: StreamData[]
+  presets: { name: string; streams: StreamData[] }[]
+
+  isOpen: boolean
+  panel: PanelState
+
+  layoutAuto: boolean
+  columns: number
+  muteAll: boolean
+
+  onOpenChange: (open: boolean) => void
+  onPanelModeChange: (mode: PanelMode) => void
+  onPanelPositionChange: (x: number, y: number) => void
+  onPanelWidthChange: (width: number) => void
+
+  onAddStream: (input: string) => void
+  onRemoveStream: (streamId: string) => void
+  onClearAll: () => void
+
+  onToggleMuteAll: () => void
+  onToggleLayoutAuto: () => void
+  onSetColumns: (columns: number) => void
+
+  onSavePreset: (name: string) => void
+  onLoadPreset: (name: string) => void
 }
 
 export function SideMenu({
   streams,
-  gridColumns,
+  presets,
+  isOpen,
+  panel,
+  layoutAuto,
+  columns,
+  muteAll,
+  onOpenChange,
+  onPanelModeChange,
+  onPanelPositionChange,
+  onPanelWidthChange,
   onAddStream,
   onRemoveStream,
   onClearAll,
-  onGridColumnsChange,
+  onToggleMuteAll,
+  onToggleLayoutAuto,
+  onSetColumns,
   onSavePreset,
   onLoadPreset,
-  savedPresets,
-  isOpen,
-  onOpenChange,
 }: SideMenuProps) {
-  const [newStreamInput, setNewStreamInput] = useState('');
-  const [presetName, setPresetName] = useState('');
-  const [allMuted, setAllMuted] = useState(false);
-  const [position, setPosition] = useState({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-  const menuRef = useRef<HTMLDivElement>(null);
+  const [newStreamInput, setNewStreamInput] = useState('')
+  const [presetName, setPresetName] = useState('')
 
-  /**
-   * Handle mouse down on drag handle
-   */
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (!menuRef.current) return;
-    setIsDragging(true);
-    const rect = menuRef.current.getBoundingClientRect();
-    setDragOffset({
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top,
-    });
-  };
+  // dragging for floating mode
+  const [isDragging, setIsDragging] = useState(false)
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
+  const menuRef = useRef<HTMLDivElement>(null)
 
-  /**
-   * Handle mouse move for dragging
-   */
+  const isDocked = panel.mode === 'docked-left' || panel.mode === 'docked-right'
+
+  const shellStyle = useMemo(() => {
+    if (!isOpen) return { display: 'none' } as React.CSSProperties
+
+    if (panel.mode === 'floating') {
+      return {
+        position: 'fixed',
+        left: panel.x,
+        top: panel.y,
+        width: panel.width,
+        zIndex: 50,
+      } as React.CSSProperties
+    }
+
+    // docked
+    const dockRight = panel.mode === 'docked-right'
+    return {
+      position: 'fixed',
+      top: 0,
+      bottom: 0,
+      width: panel.width,
+      zIndex: 40,
+      left: dockRight ? 'auto' : 0,
+      right: dockRight ? 0 : 'auto',
+    } as React.CSSProperties
+  }, [isOpen, panel.mode, panel.width, panel.x, panel.y])
+
+  // Clamp floating position in viewport (basic)
   useEffect(() => {
-    if (!isDragging) return;
+    if (panel.mode !== 'floating') return
+    if (typeof window === 'undefined') return
 
-    const handleMouseMove = (e: MouseEvent) => {
-      setPosition({
-        x: e.clientX - dragOffset.x,
-        y: e.clientY - dragOffset.y,
-      });
-    };
+    const maxX = Math.max(0, window.innerWidth - panel.width - 8)
+    const maxY = Math.max(0, window.innerHeight - 120)
 
-    const handleMouseUp = () => {
-      setIsDragging(false);
-    };
+    const clampedX = Math.min(Math.max(8, panel.x), maxX)
+    const clampedY = Math.min(Math.max(8, panel.y), maxY)
 
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
+    if (clampedX !== panel.x || clampedY !== panel.y) {
+      onPanelPositionChange(clampedX, clampedY)
+    }
+  }, [panel.mode, panel.width, panel.x, panel.y, onPanelPositionChange])
 
+  useEffect(() => {
+    if (!isDragging) return
+
+    const onMove = (e: MouseEvent) => {
+      onPanelPositionChange(e.clientX - dragOffset.x, e.clientY - dragOffset.y)
+    }
+    const onUp = () => setIsDragging(false)
+
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
     return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isDragging, dragOffset]);
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+    }
+  }, [isDragging, dragOffset, onPanelPositionChange])
 
-  /**
-   * Handle adding a new stream
-   */
+  const startDrag = (e: React.MouseEvent) => {
+    if (panel.mode !== 'floating') return
+    if (!menuRef.current) return
+    const rect = menuRef.current.getBoundingClientRect()
+    setDragOffset({ x: e.clientX - rect.left, y: e.clientY - rect.top })
+    setIsDragging(true)
+  }
+
   const handleAddStream = () => {
-    if (newStreamInput.trim()) {
-      onAddStream(newStreamInput);
-      setNewStreamInput('');
-    }
-  };
+    if (!newStreamInput.trim()) return
+    onAddStream(newStreamInput.trim())
+    setNewStreamInput('')
+  }
 
-  /**
-   * Handle saving current streams as preset
-   */
   const handleSavePreset = () => {
-    if (presetName.trim()) {
-      onSavePreset(presetName);
-      setPresetName('');
+    if (!presetName.trim()) return
+    onSavePreset(presetName.trim())
+    setPresetName('')
+  }
+
+  const toggleDockSide = () => {
+    if (panel.mode === 'docked-left') onPanelModeChange('docked-right')
+    else onPanelModeChange('docked-left')
+  }
+
+  const toggleDockFloating = () => {
+    if (panel.mode === 'floating') {
+      onPanelModeChange('docked-right')
+    } else {
+      onPanelModeChange('floating')
     }
-  };
+  }
+
+  const headerClass = isDocked
+    ? 'cursor-default'
+    : panel.mode === 'floating'
+      ? 'cursor-move'
+      : 'cursor-default'
 
   return (
     <>
-      {/* Toggle button - always visible */}
+      {/* Toggle button */}
       <button
         onClick={() => onOpenChange(!isOpen)}
         className="fixed right-4 top-4 z-50 p-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200"
-        title="Toggle menu"
+        title="Settings"
       >
-        {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+        {isOpen ? <X className="w-5 h-5" /> : <LayoutGrid className="w-5 h-5" />}
       </button>
 
-      {/* Side menu - draggable */}
-      {isOpen && (
+      {/* Panel */}
+      <div style={shellStyle}>
         <div
           ref={menuRef}
-          style={{
-            position: 'fixed',
-            left: `${position.x}px`,
-            top: `${position.y}px`,
-            zIndex: 40,
-          }}
-          className="w-80 max-h-[90vh] bg-slate-900/95 border border-slate-700 shadow-2xl rounded-lg overflow-hidden backdrop-blur-md flex flex-col"
+          className={`h-full max-h-[90vh] ${
+            isDocked ? 'rounded-none' : 'rounded-2xl'
+          } bg-slate-900/92 border border-slate-700/70 shadow-2xl overflow-hidden backdrop-blur-md flex flex-col`}
         >
-          {/* Drag handle header */}
+          {/* Header */}
           <div
-            onMouseDown={handleMouseDown}
-            className="flex items-center gap-2 bg-slate-800/50 border-b border-slate-700 p-4 cursor-grab active:cursor-grabbing"
+            onMouseDown={startDrag}
+            className={`flex items-center gap-2 bg-slate-800/50 border-b border-slate-700/60 px-4 py-3 ${headerClass}`}
           >
-            <GripHorizontal className="w-4 h-4 text-slate-500" />
-            <h2 className="text-lg font-bold text-white flex-1">Stream Control</h2>
-            <p className="text-xs text-slate-400">
-              {streams.length} stream{streams.length !== 1 ? 's' : ''}
-            </p>
+            {panel.mode === 'floating' ? (
+              <Move className="w-4 h-4 text-slate-400" />
+            ) : (
+              <LayoutGrid className="w-4 h-4 text-slate-400" />
+            )}
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-white">Controls</p>
+              <p className="text-xs text-slate-400">
+                {streams.length} stream{streams.length !== 1 ? 's' : ''} • {layoutAuto ? 'Auto' : 'Manual'}
+              </p>
+            </div>
+
+            {/* Dock left/right */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-slate-300 hover:bg-slate-700/50"
+              onClick={toggleDockSide}
+              title="Dock to other side"
+            >
+              {panel.mode === 'docked-left' ? (
+                <ArrowRightToLine className="w-4 h-4" />
+              ) : (
+                <ArrowLeftToLine className="w-4 h-4" />
+              )}
+            </Button>
+
+            {/* Dock / float */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-slate-300 hover:bg-slate-700/50"
+              onClick={toggleDockFloating}
+              title={panel.mode === 'floating' ? 'Dock panel' : 'Float panel'}
+            >
+              {panel.mode === 'floating' ? (
+                <Minimize2 className="w-4 h-4" />
+              ) : (
+                <Maximize2 className="w-4 h-4" />
+              )}
+            </Button>
           </div>
 
-          {/* Scrollable content */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {/* Add Stream Section */}
-            <div className="space-y-2">
-              <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-                <Plus className="w-4 h-4" />
-                Add Stream
-              </h3>
-              <Input
-                type="text"
-                placeholder="Channel name or URL"
-                value={newStreamInput}
-                onChange={(e) => setNewStreamInput(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleAddStream()}
-                className="bg-slate-800 border-slate-600 text-white placeholder:text-slate-500 h-9"
-              />
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-5">
+            {/* Quick actions */}
+            <div className="grid grid-cols-2 gap-2">
               <Button
-                onClick={handleAddStream}
-                disabled={!newStreamInput.trim()}
-                className="w-full bg-purple-600 hover:bg-purple-700 text-white h-9"
+                onClick={onToggleMuteAll}
+                variant="outline"
+                className="border-slate-700/60 bg-slate-900/40 hover:bg-slate-900/60 text-slate-200"
               >
-                <Plus className="w-4 h-4 mr-2" />
-                Add
+                {muteAll ? (
+                  <>
+                    <VolumeX className="w-4 h-4 mr-2" />
+                    Muted
+                  </>
+                ) : (
+                  <>
+                    <Volume2 className="w-4 h-4 mr-2" />
+                    Sound
+                  </>
+                )}
+              </Button>
+
+              <Button
+                onClick={onToggleLayoutAuto}
+                variant="outline"
+                className="border-slate-700/60 bg-slate-900/40 hover:bg-slate-900/60 text-slate-200"
+              >
+                <Wand2 className="w-4 h-4 mr-2" />
+                {layoutAuto ? 'Auto' : 'Manual'}
               </Button>
             </div>
 
-            {/* Grid Layout Section */}
+            {/* Add stream */}
             <div className="space-y-2">
-              <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-                <Grid3x3 className="w-4 h-4" />
-                Grid Layout
-              </h3>
-              <div className="grid grid-cols-5 gap-1">
+              <p className="text-xs font-semibold tracking-wide text-slate-300">ADD STREAM</p>
+              <div className="flex gap-2">
+                <Input
+                  value={newStreamInput}
+                  onChange={(e) => setNewStreamInput(e.target.value)}
+                  placeholder="twitch.tv/name or @youtube"
+                  className="bg-slate-800/70 border-slate-700/60 text-white placeholder:text-slate-500"
+                />
+                <Button
+                  onClick={handleAddStream}
+                  className="bg-purple-600 hover:bg-purple-700 text-white"
+                  disabled={!newStreamInput.trim()}
+                  title="Add"
+                >
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Layout */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold tracking-wide text-slate-300">LAYOUT</p>
+                <p className="text-xs text-slate-500">Columns: {columns}</p>
+              </div>
+              <div className="flex items-center gap-1 bg-slate-900/50 border border-slate-700/50 rounded-xl p-1">
                 {[1, 2, 3, 4, 5].map((col) => (
                   <Button
                     key={col}
-                    onClick={() => onGridColumnsChange(col)}
-                    variant={gridColumns === col ? 'default' : 'outline'}
+                    onClick={() => onSetColumns(col)}
+                    variant={columns === col ? 'default' : 'ghost'}
                     size="sm"
-                    className={`h-8 ${
-                      gridColumns === col
-                        ? 'bg-purple-600 hover:bg-purple-700'
-                        : 'border-slate-600 text-slate-300 hover:bg-slate-800'
+                    className={`w-8 h-8 p-0 rounded-lg ${
+                      columns === col
+                        ? 'bg-purple-600 hover:bg-purple-700 text-white'
+                        : 'text-slate-300 hover:bg-slate-800/50'
                     }`}
                   >
                     {col}
                   </Button>
                 ))}
               </div>
+              <p className="text-[11px] text-slate-500">
+                Tip: Auto layout picks columns based on stream count.
+              </p>
             </div>
 
-            {/* Audio Control Section */}
+            {/* Presets */}
             <div className="space-y-2">
-              <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-                <Volume2 className="w-4 h-4" />
-                Audio
-              </h3>
-              <Button
-                onClick={() => setAllMuted(!allMuted)}
-                className={`w-full h-9 ${
-                  allMuted
-                    ? 'bg-red-600 hover:bg-red-700'
-                    : 'bg-slate-700 hover:bg-slate-600'
-                } text-white`}
-              >
-                {allMuted ? (
-                  <>
-                    <VolumeX className="w-4 h-4 mr-2" />
-                    Unmute All
-                  </>
-                ) : (
-                  <>
-                    <Volume2 className="w-4 h-4 mr-2" />
-                    Mute All
-                  </>
-                )}
-              </Button>
-            </div>
+              <p className="text-xs font-semibold tracking-wide text-slate-300">PRESETS</p>
+              <div className="flex gap-2">
+                <Input
+                  value={presetName}
+                  onChange={(e) => setPresetName(e.target.value)}
+                  placeholder="Name"
+                  className="bg-slate-800/70 border-slate-700/60 text-white placeholder:text-slate-500"
+                />
+                <Button
+                  onClick={handleSavePreset}
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                  disabled={!presetName.trim() || streams.length === 0}
+                  title="Save preset"
+                >
+                  <Save className="w-4 h-4" />
+                </Button>
+              </div>
 
-            {/* Save Preset Section */}
-            <div className="space-y-2">
-              <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-                <Save className="w-4 h-4" />
-                Save Preset
-              </h3>
-              <Input
-                type="text"
-                placeholder="Preset name"
-                value={presetName}
-                onChange={(e) => setPresetName(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleSavePreset()}
-                className="bg-slate-800 border-slate-600 text-white placeholder:text-slate-500 h-9"
-              />
-              <Button
-                onClick={handleSavePreset}
-                disabled={!presetName.trim() || streams.length === 0}
-                className="w-full bg-green-600 hover:bg-green-700 text-white h-9"
-              >
-                <Save className="w-4 h-4 mr-2" />
-                Save Setup
-              </Button>
-            </div>
-
-            {/* Load Preset Section */}
-            {savedPresets.length > 0 && (
-              <div className="space-y-2">
-                <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-                  <Download className="w-4 h-4" />
-                  Presets
-                </h3>
-                <div className="space-y-2 max-h-40 overflow-y-auto">
-                  {savedPresets.map((preset) => (
+              {presets.length > 0 && (
+                <div className="space-y-2">
+                  {presets.map((p) => (
                     <Button
-                      key={preset.name}
-                      onClick={() => onLoadPreset(preset.name)}
+                      key={p.name}
+                      onClick={() => onLoadPreset(p.name)}
                       variant="outline"
                       size="sm"
-                      className="w-full justify-start border-slate-600 text-slate-300 hover:bg-slate-800 h-8"
+                      className="w-full justify-start border-slate-700/60 bg-slate-900/40 hover:bg-slate-900/60 text-slate-200"
                     >
-                      <Download className="w-3 h-3 mr-2" />
-                      {preset.name}
-                      <span className="ml-auto text-xs text-slate-500">
-                        {preset.streams.length}
-                      </span>
+                      <Download className="w-4 h-4 mr-2" />
+                      {p.name}
+                      <span className="ml-auto text-xs text-slate-500">{p.streams.length}</span>
                     </Button>
                   ))}
                 </div>
-              </div>
-            )}
+              )}
+            </div>
 
-            {/* Active Streams Section */}
+            {/* Active streams */}
             {streams.length > 0 && (
               <div className="space-y-2">
-                <h3 className="text-sm font-semibold text-white">Active Streams</h3>
-                <div className="space-y-2 max-h-40 overflow-y-auto">
-                  {streams.map((stream) => (
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold tracking-wide text-slate-300">STREAMS</p>
+                  <Button
+                    onClick={onClearAll}
+                    variant="ghost"
+                    size="sm"
+                    className="text-red-400 hover:bg-red-950/30"
+                  >
+                    <Trash2 className="w-4 h-4 mr-1" />
+                    Clear
+                  </Button>
+                </div>
+                <div className="space-y-2 max-h-56 overflow-y-auto">
+                  {streams.map((s) => (
                     <Card
-                      key={stream.id}
-                      className="bg-slate-800 border-slate-700 p-2 flex items-center justify-between"
+                      key={s.id}
+                      className="bg-slate-800/60 border-slate-700/60 p-2 flex items-center justify-between"
                     >
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-white truncate">
-                          {stream.channelName}
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-white truncate max-w-[190px]">
+                          {s.channelName}
                         </p>
-                        <p className="text-xs text-slate-400">
-                          {stream.platform === 'twitch' ? '🟣 Twitch' : '🔴 YouTube'}
+                        <p className="text-[11px] text-slate-400">
+                          {s.platform === 'twitch' ? '🟣 Twitch' : '🔴 YouTube'}
                         </p>
                       </div>
                       <Button
-                        onClick={() => onRemoveStream(stream.id)}
+                        onClick={() => onRemoveStream(s.id)}
                         variant="ghost"
-                        size="sm"
-                        className="text-red-400 hover:bg-red-950/30 h-7 w-7 p-0"
+                        size="icon"
+                        className="text-slate-300 hover:bg-slate-700/50"
+                        title="Remove"
                       >
-                        <X className="w-3 h-3" />
+                        <X className="w-4 h-4" />
                       </Button>
                     </Card>
                   ))}
@@ -315,34 +419,37 @@ export function SideMenu({
               </div>
             )}
 
-            {/* Clear All Section */}
-            {streams.length > 0 && (
-              <Button
-                onClick={onClearAll}
-                className="w-full bg-red-600 hover:bg-red-700 text-white h-9"
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                Clear All
-              </Button>
-            )}
-
-            {/* Info Section */}
-            <Card className="bg-slate-800/50 border-slate-700 p-3">
-              <p className="text-xs text-slate-400">
-                <strong>Tip:</strong> Drag this menu to move it around. Use presets to quickly load your favorite stream combinations!
+            <Card className="bg-slate-800/40 border-slate-700/60 p-3">
+              <p className="text-[11px] text-slate-400">
+                Having issues in Brave/Opera? Their privacy shields may block 3rd-party cookies for embeds.
+                If a player is blank, allow cookies for <span className="text-slate-200">twitch.tv</span> / <span className="text-slate-200">youtube.com</span>,
+                or open the stream in a new tab.
               </p>
             </Card>
           </div>
-        </div>
-      )}
 
-      {/* Overlay when menu is open */}
-      {isOpen && (
-        <div
-          className="fixed inset-0 bg-black/20 z-30 lg:hidden"
-          onClick={() => onOpenChange(false)}
-        />
+          {/* Footer / resize (docked only) */}
+          {isDocked && (
+            <div className="border-t border-slate-700/60 p-3 flex items-center justify-between">
+              <p className="text-xs text-slate-500">Width</p>
+              <input
+                aria-label="Panel width"
+                type="range"
+                min={280}
+                max={480}
+                value={panel.width}
+                onChange={(e) => onPanelWidthChange(Number(e.target.value))}
+                className="w-40"
+              />
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Overlay on mobile when docked */}
+      {isOpen && isDocked && (
+        <div className="fixed inset-0 bg-black/30 z-30 lg:hidden" onClick={() => onOpenChange(false)} />
       )}
     </>
-  );
+  )
 }
