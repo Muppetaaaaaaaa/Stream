@@ -6,10 +6,12 @@
 
 'use client'
 
+import { useMemo, useState } from 'react'
 import { StreamData } from '@/lib/types'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { X, Maximize2, Plus, Volume2, VolumeX } from 'lucide-react'
+import { EmbedNotice } from '@/components/EmbedNotice'
 
 interface MultiStreamGridProps {
   streams: StreamData[]
@@ -27,7 +29,6 @@ interface MultiStreamGridProps {
 
 function TwitchPlayer({ channelId, muted }: { channelId: string; muted: boolean }) {
   const hostname = typeof window !== 'undefined' ? window.location.hostname : 'localhost'
-  // Twitch requires the *exact* embedding parent domain.
   const src = `https://player.twitch.tv/?channel=${encodeURIComponent(channelId)}&parent=${encodeURIComponent(
     hostname
   )}&autoplay=false&muted=${muted ? 'true' : 'false'}`
@@ -78,28 +79,7 @@ export function MultiStreamGrid({
   layoutAuto,
   onToggleLayoutAuto,
 }: MultiStreamGridProps) {
-  if (streams.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] p-8">
-        <div className="text-center space-y-4 max-w-md">
-          <div className="text-6xl">📺</div>
-          <h2 className="text-2xl font-bold text-white">No Streams Yet</h2>
-          <p className="text-slate-400">
-            Add your first stream to start watching multiple creators side-by-side.
-          </p>
-          {onAddStream && (
-            <Button
-              onClick={onAddStream}
-              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Add First Stream
-            </Button>
-          )}
-        </div>
-      </div>
-    )
-  }
+  const [showNotice, setShowNotice] = useState(true)
 
   const gridClasses: Record<number, string> = {
     1: 'grid-cols-1',
@@ -111,8 +91,26 @@ export function MultiStreamGrid({
 
   const gridClass = gridClasses[columns] || gridClasses[2]
 
+  const firstStreamUrl = useMemo(() => {
+    const s = streams[0]
+    if (!s) return ''
+    if (s.platform === 'twitch') return `https://www.twitch.tv/${s.channelId}`
+    return `https://www.youtube.com/${s.channelId.startsWith('@') ? s.channelId : '@' + s.channelId}`
+  }, [streams])
+
   return (
     <div className="p-4 md:p-6">
+      {/* Compatibility notice */}
+      {showNotice && streams.length > 0 && (
+        <div className="max-w-7xl mx-auto mb-4">
+          <EmbedNotice
+            platform={streams[0].platform === 'twitch' ? 'twitch' : 'youtube'}
+            url={firstStreamUrl}
+            onDismiss={() => setShowNotice(false)}
+          />
+        </div>
+      )}
+
       {/* Compact top row */}
       <div className="max-w-7xl mx-auto mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
@@ -124,7 +122,6 @@ export function MultiStreamGrid({
         </div>
 
         <div className="flex flex-wrap gap-2 items-center">
-          {/* Mute all */}
           {onToggleMuteAll && (
             <Button
               onClick={onToggleMuteAll}
@@ -146,7 +143,6 @@ export function MultiStreamGrid({
             </Button>
           )}
 
-          {/* Auto layout toggle */}
           {onToggleLayoutAuto && (
             <Button
               onClick={onToggleLayoutAuto}
@@ -158,7 +154,6 @@ export function MultiStreamGrid({
             </Button>
           )}
 
-          {/* Column pills (manual override) */}
           {onSetColumns && (
             <div className="flex items-center gap-1 bg-slate-900/50 border border-slate-700/50 rounded-xl p-1">
               {[1, 2, 3, 4, 5].map((col) => (
@@ -179,7 +174,6 @@ export function MultiStreamGrid({
             </div>
           )}
 
-          {/* Add stream */}
           {onAddStream && (
             <Button
               onClick={onAddStream}
