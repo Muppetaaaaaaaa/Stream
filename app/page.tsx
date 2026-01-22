@@ -20,6 +20,7 @@ import { useStreamTheater } from '@/hooks/useStreamTheater'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { Button } from '@/components/ui/button'
 import { RotateCcw } from 'lucide-react'
+import type { StreamData } from '@/lib/types'
 
 export default function Home() {
   const {
@@ -33,6 +34,7 @@ export default function Home() {
     isHydrated,
     addStream,
     removeStream,
+    reorderStreams,
     clearAllStreams,
     setGridColumns,
     setLayoutAuto,
@@ -43,6 +45,7 @@ export default function Home() {
     loadFromHistory,
     savePreset,
     loadPreset,
+    deletePreset,
   } = useStreamTheater()
 
   const [isLoading, setIsLoading] = useState(false)
@@ -111,7 +114,9 @@ export default function Home() {
           onPanelWidthChange={setPanelWidth}
           onAddStream={handleStreamSubmit}
           onRemoveStream={removeStream}
+          onReorderStreams={reorderStreams}
           onClearAll={clearAllStreams}
+          onDeletePreset={deletePreset}
           onToggleMuteAll={() => setMuteAll(!muteAll)}
           onToggleLayoutAuto={() => setLayoutAuto(!layoutAuto)}
           onSetColumns={(c) => setGridColumns(c)}
@@ -145,7 +150,7 @@ export default function Home() {
         <div className="text-center mb-10">
           <p className="text-sm text-slate-400 mb-4">Quick add from history</p>
           <div className="flex flex-wrap gap-2 justify-center max-w-2xl">
-            {lastStreams.slice(0, 6).map((stream) => (
+            {lastStreams.slice(0, 6).map((stream: StreamData) => (
               <Button
                 key={`${stream.platform}-${stream.channelId}`}
                 onClick={() => loadFromHistory(stream)}

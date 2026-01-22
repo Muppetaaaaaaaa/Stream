@@ -33,6 +33,10 @@ import {
   Settings,
   MessageSquare,
   Zap,
+  ChevronUp,
+  ChevronDown,
+  Moon,
+  Sun,
 } from 'lucide-react'
 
 interface SideMenuProps {
@@ -53,7 +57,9 @@ interface SideMenuProps {
 
   onAddStream: (input: string) => void
   onRemoveStream: (streamId: string) => void
+  onReorderStreams?: (streams: StreamData[]) => void
   onClearAll: () => void
+  onDeletePreset?: (name: string) => void
 
   onToggleMuteAll: () => void
   onToggleLayoutAuto: () => void
@@ -77,7 +83,9 @@ export function SideMenu({
   onPanelWidthChange,
   onAddStream,
   onRemoveStream,
+  onReorderStreams,
   onClearAll,
+  onDeletePreset,
   onToggleMuteAll,
   onToggleLayoutAuto,
   onSetColumns,
@@ -88,6 +96,7 @@ export function SideMenu({
   const [presetName, setPresetName] = useState('')
   const [detectedPlatform, setDetectedPlatform] = useState<'twitch' | 'youtube' | null>(null)
   const [showSettings, setShowSettings] = useState(false)
+  const [darkMode, setDarkMode] = useState(true)
   
   // Settings state
   const [settings, setSettings] = useState({
@@ -95,6 +104,9 @@ export function SideMenu({
     autoplayAudio: true,
     streamQuality: 'auto' as 'auto' | '720p' | '480p' | '360p',
     showNotifications: true,
+    muteOnLoad: false,
+    rememberLayout: true,
+    compactMode: false,
   })
 
   // dragging for floating mode
@@ -208,12 +220,23 @@ export function SideMenu({
   }
 
   const handleDeletePreset = (name: string) => {
-    // This would need to be implemented in the parent component
-    // For now, we'll just show a confirmation
     if (confirm(`Delete preset "${name}"?`)) {
-      // Call parent delete function when available
-      console.log('Delete preset:', name)
+      onDeletePreset?.(name)
     }
+  }
+
+  const moveStreamUp = (index: number) => {
+    if (index === 0 || !onReorderStreams) return
+    const newStreams = [...streams]
+    ;[newStreams[index - 1], newStreams[index]] = [newStreams[index], newStreams[index - 1]]
+    onReorderStreams(newStreams)
+  }
+
+  const moveStreamDown = (index: number) => {
+    if (index === streams.length - 1 || !onReorderStreams) return
+    const newStreams = [...streams]
+    ;[newStreams[index], newStreams[index + 1]] = [newStreams[index + 1], newStreams[index]]
+    onReorderStreams(newStreams)
   }
 
   const toggleDockSide = () => {
@@ -278,6 +301,17 @@ export function SideMenu({
                 {streams.length} stream{streams.length !== 1 ? 's' : ''} • {layoutAuto ? 'Auto' : 'Manual'}
               </p>
             </div>
+
+            {/* Dark mode toggle */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-slate-300 hover:bg-slate-700/50"
+              onClick={() => setDarkMode(!darkMode)}
+              title="Toggle dark mode"
+            >
+              {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </Button>
 
             {/* Settings toggle */}
             <Button
@@ -356,6 +390,20 @@ export function SideMenu({
                   />
                 </div>
 
+                {/* Mute On Load */}
+                <div className="flex items-center justify-between">
+                  <label className="text-xs text-slate-300 flex items-center gap-2">
+                    <VolumeX className="w-3 h-3" />
+                    Mute On Load
+                  </label>
+                  <input
+                    type="checkbox"
+                    checked={settings.muteOnLoad}
+                    onChange={(e) => setSettings({ ...settings, muteOnLoad: e.target.checked })}
+                    className="w-4 h-4 rounded"
+                  />
+                </div>
+
                 {/* Stream Quality */}
                 <div className="space-y-1">
                   <label className="text-xs text-slate-300">Stream Quality</label>
@@ -378,6 +426,28 @@ export function SideMenu({
                     type="checkbox"
                     checked={settings.showNotifications}
                     onChange={(e) => setSettings({ ...settings, showNotifications: e.target.checked })}
+                    className="w-4 h-4 rounded"
+                  />
+                </div>
+
+                {/* Remember Layout */}
+                <div className="flex items-center justify-between">
+                  <label className="text-xs text-slate-300">Remember Layout</label>
+                  <input
+                    type="checkbox"
+                    checked={settings.rememberLayout}
+                    onChange={(e) => setSettings({ ...settings, rememberLayout: e.target.checked })}
+                    className="w-4 h-4 rounded"
+                  />
+                </div>
+
+                {/* Compact Mode */}
+                <div className="flex items-center justify-between">
+                  <label className="text-xs text-slate-300">Compact Mode</label>
+                  <input
+                    type="checkbox"
+                    checked={settings.compactMode}
+                    onChange={(e) => setSettings({ ...settings, compactMode: e.target.checked })}
                     className="w-4 h-4 rounded"
                   />
                 </div>
@@ -536,23 +606,45 @@ export function SideMenu({
                   </Button>
                 </div>
                 <div className="space-y-1">
-                  {streams.map((s) => (
+                  {streams.map((s, index) => (
                     <div
                       key={s.id}
-                      className="bg-slate-800/60 border border-slate-700/60 rounded-lg p-2 flex items-center justify-between"
+                      className="bg-slate-800/60 border border-slate-700/60 rounded-lg p-2 flex items-center justify-between group"
                     >
                       <p className="text-xs font-semibold text-white truncate flex-1">
-                        {s.platform === 'twitch' ? '🟣 Twitch' : '🔴 YouTube'} - {s.channelName}
+                        {s.platform === 'twitch' ? '🟣' : '🔴'} {s.channelName}
                       </p>
-                      <Button
-                        onClick={() => onRemoveStream(s.id)}
-                        variant="ghost"
-                        size="icon"
-                        className="text-slate-300 hover:bg-slate-700/50 h-6 w-6 ml-2 flex-shrink-0"
-                        title="Remove"
-                      >
-                        <X className="w-3 h-3" />
-                      </Button>
+                      <div className="flex items-center gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button
+                          onClick={() => moveStreamUp(index)}
+                          variant="ghost"
+                          size="icon"
+                          className="text-slate-300 hover:bg-slate-700/50 h-5 w-5"
+                          disabled={index === 0}
+                          title="Move up"
+                        >
+                          <ChevronUp className="w-3 h-3" />
+                        </Button>
+                        <Button
+                          onClick={() => moveStreamDown(index)}
+                          variant="ghost"
+                          size="icon"
+                          className="text-slate-300 hover:bg-slate-700/50 h-5 w-5"
+                          disabled={index === streams.length - 1}
+                          title="Move down"
+                        >
+                          <ChevronDown className="w-3 h-3" />
+                        </Button>
+                        <Button
+                          onClick={() => onRemoveStream(s.id)}
+                          variant="ghost"
+                          size="icon"
+                          className="text-slate-300 hover:bg-slate-700/50 h-5 w-5"
+                          title="Remove"
+                        >
+                          <X className="w-3 h-3" />
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>

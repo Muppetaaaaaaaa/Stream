@@ -276,6 +276,14 @@ export function useStreamTheater() {
     return true
   }, [])
 
+  const reorderStreams = useCallback((newStreams: StreamData[]) => {
+    setState((prev) => ({
+      ...prev,
+      streams: newStreams,
+    }))
+    return true
+  }, [])
+
   const effectiveColumns = useMemo(() => {
     if (!state.layoutAuto) return state.gridColumns
     const n = state.streams.length
@@ -317,6 +325,7 @@ export function useStreamTheater() {
     setPanelWidth,
 
     loadFromHistory,
+    reorderStreams,
     savePreset,
     loadPreset,
     deletePreset,
