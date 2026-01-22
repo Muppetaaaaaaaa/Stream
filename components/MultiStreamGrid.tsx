@@ -12,9 +12,9 @@
 
 import { useMemo, useState } from 'react'
 import { StreamData } from '@/lib/types'
-import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Volume2, VolumeX } from 'lucide-react'
+import { Volume2, VolumeX, Maximize2, Minimize2 } from 'lucide-react'
+import { DraggableStreamCard } from '@/components/DraggableStreamCard'
 
 interface MultiStreamGridProps {
   streams: StreamData[]
@@ -27,6 +27,13 @@ interface MultiStreamGridProps {
   onSetColumns?: (columns: number) => void
   layoutAuto?: boolean
   onToggleLayoutAuto?: () => void
+}
+
+interface Position {
+  x: number
+  y: number
+  width: number
+  height: number
 }
 
 function TwitchPlayer({ channelId, muted }: { channelId: string; muted: boolean }) {
@@ -80,6 +87,9 @@ export function MultiStreamGrid({
   layoutAuto,
   onToggleLayoutAuto,
 }: MultiStreamGridProps) {
+  const [freeFloatingMode, setFreeFloatingMode] = useState(false)
+  const [streamPositions, setStreamPositions] = useState<Record<string, Position>>({})
+
   const gridClasses: Record<number, string> = {
     1: 'grid-cols-1',
     2: 'grid-cols-1 lg:grid-cols-2',
@@ -90,15 +100,23 @@ export function MultiStreamGrid({
 
   const gridClass = gridClasses[columns] || gridClasses[2]
 
+  const handlePositionChange = (streamId: string, position: Position) => {
+    setStreamPositions((prev) => ({
+      ...prev,
+      [streamId]: position,
+    }))
+  }
+
   return (
-    <div className="p-4 md:p-6">
+    <div className={freeFloatingMode ? 'relative w-full h-screen' : 'p-4 md:p-6'}>
       {/* Compact top row */}
-      <div className="max-w-7xl mx-auto mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+      <div className={`${freeFloatingMode ? 'fixed top-4 left-4 right-4 z-40' : 'max-w-7xl mx-auto mb-6'} flex flex-col gap-3 md:flex-row md:items-center md:justify-between bg-slate-900/80 backdrop-blur-sm rounded-lg p-3 border border-slate-700/60`}>
         <div>
           <h1 className="text-2xl font-bold text-white">Multi-Stream</h1>
           <p className="text-slate-400 text-sm">
             {streams.length} stream{streams.length !== 1 ? 's' : ''}
             {layoutAuto ? ' • Auto layout' : ' • Manual layout'}
+            {freeFloatingMode ? ' • Free Floating' : ''}
           </p>
         </div>
 
@@ -124,7 +142,7 @@ export function MultiStreamGrid({
             </Button>
           )}
 
-          {onToggleLayoutAuto && (
+          {onToggleLayoutAuto && !freeFloatingMode && (
             <Button
               onClick={onToggleLayoutAuto}
               variant="outline"
@@ -135,7 +153,7 @@ export function MultiStreamGrid({
             </Button>
           )}
 
-          {onSetColumns && (
+          {onSetColumns && !freeFloatingMode && (
             <div className="flex items-center gap-1 bg-slate-900/50 border border-slate-700/50 rounded-xl p-1">
               {[1, 2, 3, 4, 5].map((col) => (
                 <Button
@@ -154,34 +172,77 @@ export function MultiStreamGrid({
               ))}
             </div>
           )}
+
+          {/* Free Floating Toggle */}
+          <Button
+            onClick={() => setFreeFloatingMode(!freeFloatingMode)}
+            variant={freeFloatingMode ? 'default' : 'outline'}
+            size="sm"
+            className={freeFloatingMode ? 'bg-purple-600 hover:bg-purple-700 text-white' : 'border-slate-700/60 bg-slate-900/40 hover:bg-slate-900/60 text-slate-200'}
+          >
+            {freeFloatingMode ? (
+              <>
+                <Minimize2 className="w-4 h-4 mr-2" />
+                Grid
+              </>
+            ) : (
+              <>
+                <Maximize2 className="w-4 h-4 mr-2" />
+                Float
+              </>
+            )}
+          </Button>
         </div>
       </div>
 
-      {/* Streams grid */}
-      <div className={`grid ${gridClass} gap-4 max-w-7xl mx-auto`}>
-        {streams.map((stream) => (
-          <Card
-            key={stream.id}
-            className="bg-slate-900/40 border-slate-700/50 overflow-hidden rounded-xl"
-          >
-            <div className="relative w-full aspect-video bg-black rounded-xl overflow-hidden">
-              <div className="w-full h-full">
-                {stream.platform === 'twitch' ? (
-                  <TwitchPlayer channelId={stream.channelId} muted={muteAll} />
-                ) : (
-                  <YouTubePlayer channelId={stream.channelId} muted={muteAll} />
-                )}
-              </div>
-            </div>
-          </Card>
-        ))}
-      </div>
+      {/* Streams - Grid or Free Floating */}
+      {freeFloatingMode ? (
+        // Free floating mode - absolute positioning
+        <div className="relative w-full h-screen">
+          {streams.map((stream) => (
+            <DraggableStreamCard
+              key={stream.id}
+              stream={stream}
+              isGridMode={false}
+              onRemoveStream={onRemoveStream}
+              onPositionChange={handlePositionChange}
+              savedPosition={streamPositions[stream.id]}
+            >
+              {stream.platform === 'twitch' ? (
+                <TwitchPlayer channelId={stream.channelId} muted={muteAll} />
+              ) : (
+                <YouTubePlayer channelId={stream.channelId} muted={muteAll} />
+              )}
+            </DraggableStreamCard>
+          ))}
+        </div>
+      ) : (
+        // Grid mode
+        <div className={`grid ${gridClass} gap-4 max-w-7xl mx-auto`}>
+          {streams.map((stream) => (
+            <DraggableStreamCard
+              key={stream.id}
+              stream={stream}
+              isGridMode={true}
+              onRemoveStream={onRemoveStream}
+            >
+              {stream.platform === 'twitch' ? (
+                <TwitchPlayer channelId={stream.channelId} muted={muteAll} />
+              ) : (
+                <YouTubePlayer channelId={stream.channelId} muted={muteAll} />
+              )}
+            </DraggableStreamCard>
+          ))}
+        </div>
+      )}
 
-      <div className="max-w-7xl mx-auto mt-8 text-center">
-        <p className="text-xs text-slate-500">
-          Use the player controls for fullscreen • Use the dockable panel for settings
-        </p>
-      </div>
+      {!freeFloatingMode && (
+        <div className="max-w-7xl mx-auto mt-8 text-center">
+          <p className="text-xs text-slate-500">
+            Use the player controls for fullscreen • Use the dockable panel for settings • Click "Float" to drag and resize streams freely
+          </p>
+        </div>
+      )}
     </div>
   )
 }
