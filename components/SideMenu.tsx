@@ -84,6 +84,7 @@ export function SideMenu({
 }: SideMenuProps) {
   const [newStreamInput, setNewStreamInput] = useState('')
   const [presetName, setPresetName] = useState('')
+  const [detectedPlatform, setDetectedPlatform] = useState<'twitch' | 'youtube' | null>(null)
 
   // dragging for floating mode
   const [isDragging, setIsDragging] = useState(false)
@@ -158,10 +159,35 @@ export function SideMenu({
     setIsDragging(true)
   }
 
+  // Detect platform from input
+  const detectPlatform = (input: string) => {
+    const lowerInput = input.toLowerCase()
+    if (lowerInput.includes('twitch') || lowerInput.includes('twitch.tv')) {
+      setDetectedPlatform('twitch')
+    } else if (lowerInput.includes('youtube') || lowerInput.includes('youtube.com') || input.startsWith('@')) {
+      setDetectedPlatform('youtube')
+    } else {
+      setDetectedPlatform(null)
+    }
+  }
+
+  const handleStreamInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    setNewStreamInput(value)
+    detectPlatform(value)
+  }
+
   const handleAddStream = () => {
     if (!newStreamInput.trim()) return
     onAddStream(newStreamInput.trim())
     setNewStreamInput('')
+    setDetectedPlatform(null)
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleAddStream()
+    }
   }
 
   const handleSavePreset = () => {
@@ -212,7 +238,7 @@ export function SideMenu({
       <div style={shellStyle}>
         <div
           ref={menuRef}
-          className={`h-full max-h-[90vh] ${
+          className={`h-full ${
             isDocked ? 'rounded-none' : 'rounded-2xl'
           } bg-slate-900/92 border border-slate-700/70 shadow-2xl overflow-hidden backdrop-blur-md flex flex-col`}
         >
@@ -299,21 +325,29 @@ export function SideMenu({
             {/* Add stream */}
             <div className="space-y-2">
               <p className="text-xs font-semibold tracking-wide text-slate-300">ADD STREAM</p>
-              <div className="flex gap-2">
-                <Input
-                  value={newStreamInput}
-                  onChange={(e) => setNewStreamInput(e.target.value)}
-                  placeholder="twitch.tv/name or @youtube"
-                  className="bg-slate-800/70 border-slate-700/60 text-white placeholder:text-slate-500"
-                />
-                <Button
-                  onClick={handleAddStream}
-                  className="bg-purple-600 hover:bg-purple-700 text-white"
-                  disabled={!newStreamInput.trim()}
-                  title="Add"
-                >
-                  <Plus className="w-4 h-4" />
-                </Button>
+              <div className="space-y-2">
+                <div className="flex gap-2">
+                  <Input
+                    value={newStreamInput}
+                    onChange={handleStreamInputChange}
+                    onKeyDown={handleKeyDown}
+                    placeholder="twitch.tv/name or @youtube"
+                    className="bg-slate-800/70 border-slate-700/60 text-white placeholder:text-slate-500"
+                  />
+                  <Button
+                    onClick={handleAddStream}
+                    className="bg-purple-600 hover:bg-purple-700 text-white"
+                    disabled={!newStreamInput.trim()}
+                    title="Add (or press Enter)"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+                {detectedPlatform && (
+                  <p className="text-xs text-slate-400">
+                    Detected: {detectedPlatform === 'twitch' ? '🟣 Twitch' : '🔴 YouTube'}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -399,30 +433,25 @@ export function SideMenu({
                     Clear
                   </Button>
                 </div>
-                <div className="space-y-2 max-h-56 overflow-y-auto">
+                <div className="space-y-1">
                   {streams.map((s) => (
-                    <Card
+                    <div
                       key={s.id}
-                      className="bg-slate-800/60 border-slate-700/60 p-2 flex items-center justify-between"
+                      className="bg-slate-800/60 border border-slate-700/60 rounded-lg p-2 flex items-center justify-between"
                     >
-                      <div className="min-w-0">
-                        <p className="text-xs font-semibold text-white truncate max-w-[190px]">
-                          {s.channelName}
-                        </p>
-                        <p className="text-[11px] text-slate-400">
-                          {s.platform === 'twitch' ? '🟣 Twitch' : '🔴 YouTube'}
-                        </p>
-                      </div>
+                      <p className="text-xs font-semibold text-white truncate flex-1">
+                        {s.platform === 'twitch' ? '🟣 Twitch' : '🔴 YouTube'} - {s.channelName}
+                      </p>
                       <Button
                         onClick={() => onRemoveStream(s.id)}
                         variant="ghost"
                         size="icon"
-                        className="text-slate-300 hover:bg-slate-700/50"
+                        className="text-slate-300 hover:bg-slate-700/50 h-6 w-6 ml-2 flex-shrink-0"
                         title="Remove"
                       >
-                        <X className="w-4 h-4" />
+                        <X className="w-3 h-3" />
                       </Button>
-                    </Card>
+                    </div>
                   ))}
                 </div>
               </div>
